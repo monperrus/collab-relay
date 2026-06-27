@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { WebsocketProvider } from 'y-websocket'
+import { HocuspocusProvider } from '@hocuspocus/provider'
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
@@ -36,7 +36,6 @@ function langExtension(filename) {
 }
 
 function openFile(path) {
-  // Tear down previous session
   if (currentProvider) { currentProvider.destroy(); currentProvider = null }
   if (currentView) { currentView.destroy(); currentView = null }
   if (currentDoc) { currentDoc.destroy(); currentDoc = null }
@@ -47,8 +46,15 @@ function openFile(path) {
   const ydoc = new Y.Doc()
   currentDoc = ydoc
 
+  // HocuspocusProvider uses its own wire protocol (docName-prefixed messages),
+  // which is what the Hocuspocus relay server expects.
+  // URL must include the path so Hocuspocus routes onLoadDocument correctly.
   const wsProto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const provider = new WebsocketProvider(`${wsProto}://${location.host}`, path, ydoc)
+  const provider = new HocuspocusProvider({
+    url: `${wsProto}://${location.host}/${path}`,
+    name: path,
+    document: ydoc,
+  })
   currentProvider = provider
 
   provider.awareness.setLocalStateField('user', { name: userName, color: userColor })
@@ -71,7 +77,6 @@ function openFile(path) {
     parent: document.getElementById('editor'),
   })
 
-  // Mark active in tree
   document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'))
   document.querySelector(`.file-item[data-path="${CSS.escape(path)}"]`)?.classList.add('active')
 }
@@ -109,12 +114,9 @@ function renderTree(nodes, container, depth = 0) {
   }
 }
 
-// SSE for live file-tree updates
 const events = new EventSource('/api/watch')
 events.onmessage = e => {
   const tree = JSON.parse(e.data)
   renderTree(tree, document.getElementById('file-tree'))
 }
-events.onerror = () => {
-  // SSE will auto-reconnect; nothing to do
-}
+events.onerror = () => {}

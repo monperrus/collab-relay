@@ -25,6 +25,7 @@
     "codemirror": "^6.0.1",
     "esbuild": "^0.24.2",
     "y-codemirror.next": "^0.3.5",
-    "y-websocket": "^2.1.0"
+    "y-websocket": "^2.1.0",
+    "@hocuspocus/provider": "^2.14.1"
   }
 }
