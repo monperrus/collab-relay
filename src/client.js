@@ -4,6 +4,7 @@ import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
+import { oneDark } from '@codemirror/theme-one-dark'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
 import { markdown } from '@codemirror/lang-markdown'
@@ -71,9 +72,11 @@ function openFile(path) {
   const state = EditorState.create({
     extensions: [
       basicSetup,
+      oneDark,
       keymap.of(yUndoManagerKeymap),
       langExtension(path),
       yCollab(ytext, provider.awareness, { undoManager }),
+      EditorView.lineWrapping,
       EditorView.theme({ '&': { height: '100%' }, '.cm-scroller': { overflow: 'auto' } }),
     ],
   })
