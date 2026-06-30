@@ -11,6 +11,13 @@ import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
 import { json } from '@codemirror/lang-json'
 
+const token = new URLSearchParams(location.search).get('token')
+
+if (!token) {
+  document.body.innerHTML = '<div style="padding:2rem;font-family:monospace">No session token. Start <code>collab-folder</code> and use the URL it prints.</div>'
+  throw new Error('no token')
+}
+
 const USER_COLORS = [
   '#e57373', '#81c784', '#64b5f6', '#ffb74d',
   '#ba68c8', '#4dd0e1', '#aed581', '#f06292',
@@ -46,13 +53,12 @@ function openFile(path) {
   const ydoc = new Y.Doc()
   currentDoc = ydoc
 
-  // HocuspocusProvider uses its own wire protocol (docName-prefixed messages),
-  // which is what the Hocuspocus relay server expects.
-  // URL must include the path so Hocuspocus routes onLoadDocument correctly.
   const wsProto = location.protocol === 'https:' ? 'wss' : 'ws'
+  // Token is in the path so it becomes part of the Hocuspocus documentName,
+  // namespacing the Yjs doc per session.
   const provider = new HocuspocusProvider({
-    url: `${wsProto}://${location.host}/${path}`,
-    name: path,
+    url: `${wsProto}://${location.host}/${token}/${path}`,
+    name: `${token}/${path}`,
     document: ydoc,
   })
   currentProvider = provider
@@ -114,7 +120,7 @@ function renderTree(nodes, container, depth = 0) {
   }
 }
 
-const events = new EventSource('/api/watch')
+const events = new EventSource(`/api/watch?token=${encodeURIComponent(token)}`)
 events.onmessage = e => {
   const tree = JSON.parse(e.data)
   renderTree(tree, document.getElementById('file-tree'))

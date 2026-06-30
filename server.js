@@ -8,22 +8,26 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PORT = parseInt(process.env.PORT || '3000', 10)
 
-// SSE clients for live file-tree push to browsers
-const sseClients = new Set()
-// Control WebSocket from the local watcher process
-let watcherWs = null
-// Doc names already signaled to the watcher (to avoid duplicate signals)
-const requestedDocs = new Set()
-// Latest file tree received from watcher
-let currentFileTree = []
+// sessions: token → { ws, requestedDocs, sseClients, fileTree }
+const sessions = new Map()
+
+function getSession(token) {
+  return token ? sessions.get(token) : undefined
+}
 
 const hocuspocus = Server.configure({
   async onLoadDocument({ document, documentName }) {
-    // When any browser opens a file, signal the local watcher once
-    if (!documentName.startsWith('__') && !requestedDocs.has(documentName)) {
-      requestedDocs.add(documentName)
-      if (watcherWs?.readyState === 1) {
-        watcherWs.send(JSON.stringify({ type: 'open', name: documentName }))
+    // documentName = "<token>/<filepath>"
+    const slash = documentName.indexOf('/')
+    if (slash === -1) return document
+    const token = documentName.slice(0, slash)
+    const docFile = documentName.slice(slash + 1)
+    const session = getSession(token)
+    if (!session) return document
+    if (!session.requestedDocs.has(docFile)) {
+      session.requestedDocs.add(docFile)
+      if (session.ws?.readyState === 1) {
+        session.ws.send(JSON.stringify({ type: 'open', name: docFile }))
       }
     }
     return document
@@ -33,56 +37,77 @@ const hocuspocus = Server.configure({
 const app = express()
 app.use(express.static(join(__dirname, 'public')))
 
-app.get('/api/files', (_req, res) => res.json(currentFileTree))
+app.get('/api/files', (req, res) => {
+  const session = getSession(req.query.token)
+  if (!session) return res.status(403).json({ error: 'invalid token' })
+  res.json(session.fileTree)
+})
 
 app.get('/api/watch', (req, res) => {
+  const session = getSession(req.query.token)
+  if (!session) return res.status(403).end()
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
   res.flushHeaders()
-  res.write(`data: ${JSON.stringify(currentFileTree)}\n\n`)
-  sseClients.add(res)
-  req.on('close', () => sseClients.delete(res))
+  res.write(`data: ${JSON.stringify(session.fileTree)}\n\n`)
+  session.sseClients.add(res)
+  req.on('close', () => session.sseClients.delete(res))
 })
 
 const httpServer = createServer(app)
 
-// Data plane: Hocuspocus handles all Yjs WS connections (browsers + watcher)
 const wss = new WebSocketServer({ noServer: true })
-
-// Control plane: watcher connects here for file-tree updates and doc-request signals
 const watcherWss = new WebSocketServer({ noServer: true })
 
-watcherWss.on('connection', ws => {
-  console.log('[watcher] connected')
-  watcherWs = ws
-  // Replay any docs that were requested before the watcher arrived
-  for (const name of requestedDocs) {
+watcherWss.on('connection', (ws, req) => {
+  const url = new URL(req.url, 'http://x')
+  const token = url.searchParams.get('token')
+  if (!token) { ws.close(4001, 'missing token'); return }
+
+  const session = { ws, requestedDocs: new Set(), sseClients: new Set(), fileTree: [] }
+  sessions.set(token, session)
+  console.log('[watcher] connected', token.slice(0, 8))
+
+  // Replay any docs that were requested before watcher arrived
+  for (const name of session.requestedDocs) {
     ws.send(JSON.stringify({ type: 'open', name }))
   }
+
   ws.on('message', raw => {
     try {
       const msg = JSON.parse(raw)
       if (msg.type === 'filetree') {
-        currentFileTree = msg.tree
+        session.fileTree = msg.tree
         const payload = `data: ${JSON.stringify(msg.tree)}\n\n`
-        for (const res of sseClients) res.write(payload)
+        for (const res of session.sseClients) res.write(payload)
       }
     } catch {}
   })
+
   ws.on('close', () => {
-    if (watcherWs === ws) watcherWs = null
-    console.log('[watcher] disconnected')
+    sessions.delete(token)
+    console.log('[watcher] disconnected', token.slice(0, 8))
   })
+
   ws.on('error', () => {})
 })
 
 httpServer.on('upgrade', (request, socket, head) => {
-  if (request.url === '/__watcher__') {
+  const url = new URL(request.url, 'http://x')
+  if (url.pathname === '/__watcher__') {
     watcherWss.handleUpgrade(request, socket, head, ws => {
-      watcherWss.emit('connection', ws)
+      watcherWss.emit('connection', ws, request)
     })
   } else {
+    // Validate token: pathname = "/<token>/<docName...>"
+    const parts = url.pathname.slice(1).split('/')
+    const token = parts[0]
+    if (!token || !sessions.has(token)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
+      socket.destroy()
+      return
+    }
     wss.handleUpgrade(request, socket, head, ws => {
       hocuspocus.handleConnection(ws, request)
     })
