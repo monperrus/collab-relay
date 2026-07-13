@@ -123,6 +123,10 @@ function renderTree(nodes, container, depth = 0) {
   }
 }
 
+document.addEventListener('keydown', e => {
+  if (e.key === 's' && (e.ctrlKey || e.metaKey)) e.preventDefault()
+})
+
 const events = new EventSource(`/api/watch?token=${encodeURIComponent(token)}`)
 events.onmessage = e => {
   const tree = JSON.parse(e.data)
