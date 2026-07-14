@@ -11,6 +11,8 @@ import { markdown } from '@codemirror/lang-markdown'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
 import { json } from '@codemirror/lang-json'
+import { StreamLanguage } from '@codemirror/language'
+import { stex } from '@codemirror/legacy-modes/mode/stex'
 
 const token = new URLSearchParams(location.search).get('token')
 
@@ -40,6 +42,7 @@ function langExtension(filename) {
   if (['html', 'htm'].includes(ext)) return html()
   if (ext === 'css') return css()
   if (ext === 'json') return json()
+  if (['tex', 'sty', 'cls', 'bib'].includes(ext)) return StreamLanguage.define(stex)
   return []
 }
 
