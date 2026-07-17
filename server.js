@@ -49,6 +49,9 @@ app.get('/api/watch', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
+  // Dokku's nginx proxy otherwise buffers this response, preventing browsers
+  // from receiving the initial file-tree event on a quiet connection.
+  res.setHeader('X-Accel-Buffering', 'no')
   res.flushHeaders()
   res.write(`data: ${JSON.stringify(session.fileTree)}\n\n`)
   session.sseClients.add(res)
