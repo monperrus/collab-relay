@@ -17,7 +17,31 @@ import { stex } from '@codemirror/legacy-modes/mode/stex'
 const token = new URLSearchParams(location.search).get('token')
 
 if (!token) {
-  document.body.innerHTML = '<div style="padding:2rem;font-family:monospace">No session token. Start <code>collab-folder</code> and use the URL it prints.</div>'
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace;background:#1e1e2e;color:#cdd6f4">
+      <div style="max-width:640px">
+        <h1 style="font-size:1.4rem;margin-bottom:1rem;color:#cba6f7">Gakoy Collab</h1>
+        <p style="line-height:1.6;margin-bottom:1.25rem">
+          This is the relay behind <strong>@gakoy/collab</strong>: it shares a local folder for
+          real-time, browser-based collaborative editing. Run the CLI against a project on your
+          machine and it prints a session URL on this site — send that URL to collaborators to
+          edit the same files together while the command keeps running.
+        </p>
+        <p style="margin-bottom:0.5rem;color:#a6adc8">Install and use:</p>
+        <pre style="background:#181825;border:1px solid #313244;border-radius:6px;padding:1rem;overflow-x:auto;line-height:1.6"><code>npx @gakoy/collab ./my-project
+
+# Or install the command once:
+npm install --global @gakoy/collab
+gakoy-collab ./my-project</code></pre>
+        <p style="margin-top:1.25rem;line-height:1.6;color:#a6adc8">
+          No session token was found in this URL — open the link the CLI printed instead of this
+          bare address. See
+          <a href="https://github.com/monperrus/collab" style="color:#89b4fa">github.com/monperrus/collab</a>
+          for details.
+        </p>
+      </div>
+    </div>
+  `
   throw new Error('no token')
 }
 
