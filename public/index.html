@@ -15,6 +15,10 @@
       color: #cdd6f4;
     }
 
+    /* Same selection colour outside the editor, so selecting a path in the
+       toolbar or in the explorer reads the same way. */
+    ::selection { background: #3b5a8c; color: #cdd6f4; }
+
     #app {
       display: flex;
       height: 100vh;
@@ -111,7 +115,14 @@
     .cm-gutters { background: #181825 !important; border-right: 1px solid #313244 !important; }
     .cm-activeLineGutter { background: #24273a !important; }
     .cm-activeLine { background: #24273a !important; }
-    .cm-selectionBackground { background: #45475a !important; }
+    /* A grey selection barely separates from the dark editor background, which
+       makes a selection hard to spot; a blue tint of the accent colour stands
+       out while keeping the text on top readable. CodeMirror draws its own
+       selection layer while focused and leaves the native one in place
+       otherwise, so both need the colour. */
+    .cm-selectionBackground,
+    .cm-focused .cm-selectionBackground,
+    .cm-content ::selection { background: #3b5a8c !important; }
     .cm-cursor { border-left-color: #cba6f7 !important; }
     .cm-content { color: #cdd6f4; }
     .cm-line { padding: 0 4px 0 8px; }
