@@ -14,7 +14,10 @@ import { json } from '@codemirror/lang-json'
 import { StreamLanguage } from '@codemirror/language'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
 
-const token = new URLSearchParams(location.search).get('token')
+const params = new URLSearchParams(location.search)
+const token = params.get('token')
+// Set when the CLI was given a file: the editor shows that file alone.
+const singleFile = params.get('file')
 
 if (!token) {
   document.body.innerHTML = `
@@ -154,9 +157,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 's' && (e.ctrlKey || e.metaKey)) e.preventDefault()
 })
 
-const events = new EventSource(`/api/watch?token=${encodeURIComponent(token)}`)
-events.onmessage = e => {
-  const tree = JSON.parse(e.data)
-  renderTree(tree, document.getElementById('file-tree'))
+if (singleFile) {
+  document.getElementById('sidebar').remove()
+  document.title = singleFile
+  openFile(singleFile)
+} else {
+  const events = new EventSource(`/api/watch?token=${encodeURIComponent(token)}`)
+  events.onmessage = e => {
+    const tree = JSON.parse(e.data)
+    renderTree(tree, document.getElementById('file-tree'))
+  }
+  events.onerror = () => {}
 }
-events.onerror = () => {}
