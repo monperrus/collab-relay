@@ -13,6 +13,15 @@ The production service is deployed as the Dokku app `collab` at
 git push dokku main
 ```
 
+## Test
+
+The browser editor has an end-to-end check that runs the relay locally and
+drives headless Chromium (needs Python Playwright):
+
+```bash
+npm run build && python3 test/e2e_goto_line.py
+```
+
 The user-facing CLI is maintained in
 [monperrus/collab](https://github.com/monperrus/collab); research and
 architecture notes are in

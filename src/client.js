@@ -2,8 +2,9 @@ import * as Y from 'yjs'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { EditorView, basicSetup } from 'codemirror'
-import { EditorState } from '@codemirror/state'
+import { EditorState, Prec } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
+import { gotoLine } from '@codemirror/search'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
@@ -78,7 +79,8 @@ function openFile(path) {
   if (currentView) { currentView.destroy(); currentView = null }
   if (currentDoc) { currentDoc.destroy(); currentDoc = null }
 
-  document.getElementById('toolbar').textContent = path
+  document.getElementById('toolbar-path').textContent = path
+  document.getElementById('goto-line').disabled = false
   document.getElementById('editor').innerHTML = ''
 
   const ydoc = new Y.Doc()
@@ -102,6 +104,9 @@ function openFile(path) {
   const state = EditorState.create({
     extensions: [
       basicSetup,
+      // Ctrl-G is Go to Line in VS Code and Sublime Text; it takes precedence
+      // over find-next, which stays on F3 (and Cmd-G on macOS).
+      Prec.highest(keymap.of([{ key: 'Ctrl-g', run: gotoLine }])),
       oneDark,
       keymap.of(yUndoManagerKeymap),
       langExtension(path),
@@ -155,6 +160,16 @@ function renderTree(nodes, container, depth = 0) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 's' && (e.ctrlKey || e.metaKey)) e.preventDefault()
+  // The editor handles Ctrl-G itself when focused; this covers the focus being
+  // elsewhere (toolbar, explorer), where the browser would find-next instead.
+  if (e.key === 'g' && e.ctrlKey && !e.altKey && !e.metaKey && !e.defaultPrevented && currentView) {
+    e.preventDefault()
+    gotoLine(currentView)
+  }
+})
+
+document.getElementById('goto-line').addEventListener('click', () => {
+  if (currentView) gotoLine(currentView)
 })
 
 if (singleFile) {
