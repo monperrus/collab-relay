@@ -134,7 +134,10 @@
     .cm-scroller { overflow: auto !important; }
     .cm-gutters { background: #181825 !important; border-right: 1px solid #313244 !important; }
     .cm-activeLineGutter { background: #24273a !important; }
-    .cm-activeLine { background: #24273a !important; }
+    /* CodeMirror draws the selection in a layer beneath the lines, so an
+       opaque active-line background hides any selection on the cursor's line;
+       a translucent one (#24273a over the editor background) lets it show. */
+    .cm-activeLine { background: rgba(255, 255, 255, 0.04) !important; }
     /* A grey selection barely separates from the dark editor background, which
        makes a selection hard to spot; a blue tint of the accent colour stands
        out while keeping the text on top readable. CodeMirror draws its own

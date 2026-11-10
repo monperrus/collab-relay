@@ -15,11 +15,13 @@ git push dokku main
 
 ## Test
 
-The browser editor has an end-to-end check that runs the relay locally and
-drives headless Chromium (needs Python Playwright):
+The browser editor has end-to-end checks that run the relay locally and
+drive headless Chromium (need Python Playwright and Pillow):
 
 ```bash
-npm run build && python3 test/e2e_goto_line.py
+npm run build
+python3 test/e2e_goto_line.py
+python3 test/e2e_selection.py
 ```
 
 The user-facing CLI is maintained in
