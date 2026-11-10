@@ -22,6 +22,7 @@ drive headless Chromium (need Python Playwright and Pillow):
 npm run build
 python3 test/e2e_goto_line.py
 python3 test/e2e_selection.py
+python3 test/e2e_undo.py
 ```
 
 The user-facing CLI is maintained in

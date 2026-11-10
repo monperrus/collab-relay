@@ -1,10 +1,18 @@
 import * as Y from 'yjs'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
-import { EditorView, basicSetup } from 'codemirror'
+import {
+  EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars,
+  drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine,
+} from '@codemirror/view'
 import { EditorState, Prec } from '@codemirror/state'
-import { keymap } from '@codemirror/view'
-import { gotoLine } from '@codemirror/search'
+import {
+  foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatching, foldKeymap,
+} from '@codemirror/language'
+import { defaultKeymap } from '@codemirror/commands'
+import { gotoLine, highlightSelectionMatches, searchKeymap } from '@codemirror/search'
+import { closeBrackets, autocompletion, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
+import { lintKeymap } from '@codemirror/lint'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
@@ -14,6 +22,38 @@ import { css } from '@codemirror/lang-css'
 import { json } from '@codemirror/lang-json'
 import { StreamLanguage } from '@codemirror/language'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
+
+// CodeMirror's `basicSetup` without its undo history. That history records
+// every change shown in the editor, including the ones made by the other peers
+// and the initial load of the file: enough Ctrl-Z took them all back and
+// emptied the document, and the watcher then emptied the file on disk. Undo
+// belongs to the Yjs undo manager, which tracks the local user's edits only.
+const editorSetup = [
+  lineNumbers(),
+  highlightActiveLineGutter(),
+  highlightSpecialChars(),
+  foldGutter(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection(),
+  crosshairCursor(),
+  highlightActiveLine(),
+  highlightSelectionMatches(),
+  keymap.of([
+    ...closeBracketsKeymap,
+    ...defaultKeymap,
+    ...searchKeymap,
+    ...foldKeymap,
+    ...completionKeymap,
+    ...lintKeymap,
+  ]),
+]
 
 const params = new URLSearchParams(location.search)
 const token = params.get('token')
@@ -103,7 +143,7 @@ function openFile(path) {
 
   const state = EditorState.create({
     extensions: [
-      basicSetup,
+      editorSetup,
       // Ctrl-G is Go to Line in VS Code and Sublime Text; it takes precedence
       // over find-next, which stays on F3 (and Cmd-G on macOS).
       Prec.highest(keymap.of([{ key: 'Ctrl-g', run: gotoLine }])),
